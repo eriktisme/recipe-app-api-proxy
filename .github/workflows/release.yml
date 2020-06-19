@@ -5,6 +5,21 @@ on:
     types: [published]
 
 jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build Docker image
+        run: |
+          docker build --compress -t proxy .
+          docker save --output image.tar proxy
+      - name: Upload artifact
+        uses: actions/upload-artifact@v1
+        with:
+          name: image
+          path: image.tar
+
   push:
     runs-on: ubuntu-latest
 
@@ -25,7 +40,8 @@ jobs:
           name: image
       - name: Tag and Push Docker image
         run: |
-          export TAGGED_ECR_REPO=${{ secrets.ECR_REPO }} :$(echo ${{ github.event.release.tag_name }})
+          export TAGGED_ECR_REPO=${{ secrets.ECR_REPO }}:$(echo ${{ github.event.release.tag_name }})
+          docker load --input image/image.tar
           docker tag proxy:latest $TAGGED_ECR_REPO
           docker push $TAGGED_ECR_REPO
           docker tag $TAGGED_ECR_REPO ${{ secrets.ECR_REPO }}
