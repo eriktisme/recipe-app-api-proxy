@@ -1,0 +1,30 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-west-1
+      - name: Download artifact
+        uses: actions/download-artifact@v1
+        with:
+          name: image
+      - name: Tag and Push Docker image
+        run: |
+          export TAGGED_ECR_REPO=${{ secrets.ECR_REPO }} :$(echo ${{ github.event.release.tag_name }})
+          aws ecr get-login-password --region eu-west-1 --profile default | docker login --username AWS --password-stdin ${{ secrets.ECR_REPO }}
+          docker tag proxy:latest $TAGGED_ECR_REPO
+          docker push $TAGGED_ECR_REPO
+          docker tag $TAGGED_ECR_REPO ${{ secrets.ECR_REPO }}
+          docker push ${{ secrets.ECR_REPO }}:latest
