@@ -26,6 +26,7 @@ jobs:
       - name: Tag and Push Docker image
         run: |
           export TAGGED_ECR_REPO=${{ secrets.ECR_REPO }} :$(echo ${{ github.event.release.tag_name }})
+          docker load --input image/image.tar
           docker tag proxy:latest $TAGGED_ECR_REPO
           docker push $TAGGED_ECR_REPO
           docker tag $TAGGED_ECR_REPO ${{ secrets.ECR_REPO }}
