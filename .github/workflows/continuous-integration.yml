@@ -1,0 +1,44 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build Docker image
+        run: |
+          docker build --compress -t proxy .
+          docker save --output image.tar proxy
+      - name: Upload artifact
+        uses: actions/upload-artifact@v1
+        with:
+          name: image
+          path: image.tar
+
+  push:
+    runs-on: ubuntu-latest
+    needs: [build]
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-west-1
+      - name: Download artifact
+        uses: actions/download-artifact@v1
+        with:
+          name: image
+      - name: Tag and Push Docker image
+        run: |
+          aws ecr get-login-password --region eu-west-1 --profile default | docker login --username AWS --password-stdin ${{ secret.ECR_REPO }}
+          docker tag proxy:latest ${{ secret.ECR_REPO }}:dev
+          docker push ${{ secret.ECR_REPO }}:dev
